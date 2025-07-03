@@ -1372,41 +1372,166 @@ class ZombieApocalypseGame {
     playSound(type) {
         if(!this.audioContext) return;
         
+        switch(type) {
+            case 'door':
+                this.createSimpleSound(150, 100, 0.3, 0.5);
+                break;
+            case 'sleep':
+                this.createSimpleSound(200, 150, 0.2, 1);
+                break;
+            case 'search':
+                this.createSimpleSound(300, 250, 0.2, 0.4);
+                break;
+            case 'alarm':
+                this.createApocalypseSiren();
+                break;
+        }
+    }
+    
+    createSimpleSound(startFreq, endFreq, volume, duration) {
         const oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
         
-        switch(type) {
-            case 'door':
-                oscillator.frequency.setValueAtTime(150, this.audioContext.currentTime);
-                oscillator.frequency.setValueAtTime(100, this.audioContext.currentTime + 0.3);
-                gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
-                break;
-            case 'sleep':
-                oscillator.frequency.setValueAtTime(200, this.audioContext.currentTime);
-                oscillator.frequency.setValueAtTime(150, this.audioContext.currentTime + 0.5);
-                gainNode.gain.setValueAtTime(0.2, this.audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 1);
-                break;
-            case 'search':
-                oscillator.frequency.setValueAtTime(300, this.audioContext.currentTime);
-                oscillator.frequency.setValueAtTime(250, this.audioContext.currentTime + 0.2);
-                gainNode.gain.setValueAtTime(0.2, this.audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.4);
-                break;
-            case 'alarm':
-                oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
-                oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime + 0.5);
-                oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime + 1);
-                gainNode.gain.setValueAtTime(0.5, this.audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 1.5);
-                break;
-        }
+        oscillator.frequency.setValueAtTime(startFreq, this.audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(endFreq, this.audioContext.currentTime + duration * 0.6);
+        gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
         
         oscillator.connect(gainNode);
         gainNode.connect(this.audioContext.destination);
         oscillator.start(this.audioContext.currentTime);
-        oscillator.stop(this.audioContext.currentTime + 2);
+        oscillator.stop(this.audioContext.currentTime + duration);
+    }
+    
+    createApocalypseSiren() {
+        const duration = 8; // 8 segundos de sirena
+        const currentTime = this.audioContext.currentTime;
+        
+        // Sirena principal - sonido ondulante característico
+        const mainOscillator = this.audioContext.createOscillator();
+        const mainGain = this.audioContext.createGain();
+        const modulator = this.audioContext.createOscillator();
+        const modulatorGain = this.audioContext.createGain();
+        
+        // Configurar modulador para el efecto ondulante
+        modulator.frequency.setValueAtTime(0.8, currentTime); // 0.8 Hz para ondulación lenta
+        modulatorGain.gain.setValueAtTime(200, currentTime); // Profundidad de modulación
+        
+        // Conectar modulador a la frecuencia principal
+        modulator.connect(modulatorGain);
+        modulatorGain.connect(mainOscillator.frequency);
+        
+        // Frecuencia base de la sirena (típica de sirenas de emergencia)
+        mainOscillator.frequency.setValueAtTime(400, currentTime);
+        mainOscillator.type = 'sawtooth'; // Sonido más áspero y penetrante
+        
+        // Volumen principal con fade in/out
+        mainGain.gain.setValueAtTime(0, currentTime);
+        mainGain.gain.linearRampToValueAtTime(0.4, currentTime + 0.5);
+        mainGain.gain.setValueAtTime(0.4, currentTime + duration - 1);
+        mainGain.gain.linearRampToValueAtTime(0, currentTime + duration);
+        
+        // Segunda sirena una octava más alta para armonía
+        const harmonyOscillator = this.audioContext.createOscillator();
+        const harmonyGain = this.audioContext.createGain();
+        const harmonyModulator = this.audioContext.createOscillator();
+        const harmonyModulatorGain = this.audioContext.createGain();
+        
+        harmonyModulator.frequency.setValueAtTime(1.2, currentTime); // Ligeramente diferente
+        harmonyModulatorGain.gain.setValueAtTime(150, currentTime);
+        
+        harmonyModulator.connect(harmonyModulatorGain);
+        harmonyModulatorGain.connect(harmonyOscillator.frequency);
+        
+        harmonyOscillator.frequency.setValueAtTime(600, currentTime);
+        harmonyOscillator.type = 'triangle';
+        
+        harmonyGain.gain.setValueAtTime(0, currentTime);
+        harmonyGain.gain.linearRampToValueAtTime(0.2, currentTime + 0.7);
+        harmonyGain.gain.setValueAtTime(0.2, currentTime + duration - 1);
+        harmonyGain.gain.linearRampToValueAtTime(0, currentTime + duration);
+        
+        // Sirena grave para profundidad
+        const bassOscillator = this.audioContext.createOscillator();
+        const bassGain = this.audioContext.createGain();
+        const bassModulator = this.audioContext.createOscillator();
+        const bassModulatorGain = this.audioContext.createGain();
+        
+        bassModulator.frequency.setValueAtTime(0.6, currentTime);
+        bassModulatorGain.gain.setValueAtTime(100, currentTime);
+        
+        bassModulator.connect(bassModulatorGain);
+        bassModulatorGain.connect(bassOscillator.frequency);
+        
+        bassOscillator.frequency.setValueAtTime(200, currentTime);
+        bassOscillator.type = 'square';
+        
+        bassGain.gain.setValueAtTime(0, currentTime);
+        bassGain.gain.linearRampToValueAtTime(0.3, currentTime + 1);
+        bassGain.gain.setValueAtTime(0.3, currentTime + duration - 1.5);
+        bassGain.gain.linearRampToValueAtTime(0, currentTime + duration);
+        
+        // Efectos de distorsión y filtro para sonido más apocalíptico
+        const distortion = this.audioContext.createWaveShaper();
+        const filterNode = this.audioContext.createBiquadFilter();
+        const masterGain = this.audioContext.createGain();
+        
+        // Crear curva de distorsión
+        const samples = 44100;
+        const curve = new Float32Array(samples);
+        const degree = 50;
+        for(let i = 0; i < samples; i++) {
+            const x = (i * 2) / samples - 1;
+            curve[i] = (3 + degree) * x * 20 * Math.PI / 180 / (Math.PI + degree * Math.abs(x));
+        }
+        distortion.curve = curve;
+        distortion.oversample = '4x';
+        
+        // Filtro pasa-bajo para suavizar la distorsión
+        filterNode.type = 'lowpass';
+        filterNode.frequency.setValueAtTime(1500, currentTime);
+        filterNode.Q.setValueAtTime(0.7, currentTime);
+        
+        // Volumen maestro
+        masterGain.gain.setValueAtTime(0.6, currentTime);
+        
+        // Conectar todo
+        mainOscillator.connect(mainGain);
+        harmonyOscillator.connect(harmonyGain);
+        bassOscillator.connect(bassGain);
+        
+        mainGain.connect(distortion);
+        harmonyGain.connect(distortion);
+        bassGain.connect(distortion);
+        
+        distortion.connect(filterNode);
+        filterNode.connect(masterGain);
+        masterGain.connect(this.audioContext.destination);
+        
+        // Iniciar todos los osciladores
+        mainOscillator.start(currentTime);
+        modulator.start(currentTime);
+        harmonyOscillator.start(currentTime);
+        harmonyModulator.start(currentTime);
+        bassOscillator.start(currentTime);
+        bassModulator.start(currentTime);
+        
+        // Detener todos los osciladores
+        mainOscillator.stop(currentTime + duration);
+        modulator.stop(currentTime + duration);
+        harmonyOscillator.stop(currentTime + duration);
+        harmonyModulator.stop(currentTime + duration);
+        bassOscillator.stop(currentTime + duration);
+        bassModulator.stop(currentTime + duration);
+        
+        // Programar repetición de la sirena cada 10 segundos mientras la alarma esté activa
+        if(this.alarmSystem.isActive) {
+            setTimeout(() => {
+                if(this.alarmSystem.isActive) {
+                    this.createApocalypseSiren();
+                }
+            }, 10000);
+        }
     }
     
     collectSupply(supply) {
@@ -1734,16 +1859,17 @@ class ZombieApocalypseGame {
             light.visible = true;
         });
         
-        // Reproducir sonido de alarma
+        // Reproducir sonido de alarma apocalíptica inmediatamente
         this.playSound('alarm');
         
         // Hacer que la ciudad se vea más alarmante
         this.scene.fog.density = 0.02; // Más niebla durante la alarma
+        this.scene.fog.color.setHex(0x440000); // Niebla rojiza durante alarma
         
         // Mostrar mensaje de alarma
-        this.showMessage("¡ALARMA DE EMERGENCIA ACTIVADA!");
+        this.showMessage("¡SIRENA DE EMERGENCIA - EVACUACIÓN INMEDIATA!");
         
-        console.log("Sistema de alarma activado - Duración: 30 segundos");
+        console.log("Sistema de alarma activado - Sonido continuo por 30 segundos");
     }
     
     deactivateAlarm() {
@@ -1756,6 +1882,7 @@ class ZombieApocalypseGame {
         
         // Restaurar niebla normal
         this.scene.fog.density = 0.01;
+        this.scene.fog.color.setHex(0x330000); // Color normal de niebla
         
         // Reiniciar las luces giratorias
         this.scene.traverse((child) => {
