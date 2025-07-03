@@ -252,16 +252,21 @@ class ZombieApocalypseGame {
         this.earthquake = {
             isActive: false,
             startTime: 10, // Empieza a los 10 segundos
-            duration: 60, // 60 segundos de terremoto
+            duration: 45, // 45 segundos de terremoto intenso
             intensity: 0,
-            maxIntensity: 8,
+            maxIntensity: 15, // Mucho más intenso
             shakeAmount: 0,
             lastShake: 0,
             collapsingBuildings: [],
             fallingDebris: [],
             groundCracks: [],
             hasStarted: false,
-            music: null
+            music: null,
+            meteorites: [],
+            explosions: [],
+            nextMeteoriteTime: 0,
+            nextExplosionTime: 0,
+            cameraShake: { x: 0, y: 0, z: 0 }
         };
 
         // Emergency alarm system - Más constante y fuerte
@@ -2418,15 +2423,23 @@ class ZombieApocalypseGame {
     }
 
     scheduleEarthquakeEvents() {
+        // Eventos inmediatos y constantes
         const events = [
-            { time: 5, action: 'collapseBuilding', buildingIndex: 0 },
-            { time: 12, action: 'collapseBuilding', buildingIndex: 2 },
-            { time: 18, action: 'createGroundCrack', x: -20, z: -30 },
-            { time: 25, action: 'collapseBuilding', buildingIndex: 4 },
-            { time: 35, action: 'createGroundCrack', x: 40, z: 20 },
-            { time: 42, action: 'collapseBuilding', buildingIndex: 6 },
-            { time: 50, action: 'createGroundCrack', x: -50, z: 40 },
-            { time: 55, action: 'collapseBuilding', buildingIndex: 8 }
+            { time: 1, action: 'collapseBuilding', buildingIndex: 0 },
+            { time: 2, action: 'collapseBuilding', buildingIndex: 1 },
+            { time: 3, action: 'createGroundCrack', x: -20, z: -30 },
+            { time: 4, action: 'collapseBuilding', buildingIndex: 2 },
+            { time: 6, action: 'collapseBuilding', buildingIndex: 3 },
+            { time: 8, action: 'createGroundCrack', x: 40, z: 20 },
+            { time: 10, action: 'collapseBuilding', buildingIndex: 4 },
+            { time: 12, action: 'collapseBuilding', buildingIndex: 5 },
+            { time: 15, action: 'createGroundCrack', x: -50, z: 40 },
+            { time: 18, action: 'collapseBuilding', buildingIndex: 6 },
+            { time: 20, action: 'collapseBuilding', buildingIndex: 7 },
+            { time: 25, action: 'collapseBuilding', buildingIndex: 8 },
+            { time: 30, action: 'collapseBuilding', buildingIndex: 9 },
+            { time: 35, action: 'collapseBuilding', buildingIndex: 10 },
+            { time: 40, action: 'collapseBuilding', buildingIndex: 11 }
         ];
 
         events.forEach(event => {
@@ -2436,6 +2449,12 @@ class ZombieApocalypseGame {
                 }
             }, event.time * 1000);
         });
+
+        // Meteoritos cada 3 segundos
+        this.earthquake.nextMeteoriteTime = 3;
+        
+        // Explosiones cada 5 segundos
+        this.earthquake.nextExplosionTime = 5;
     }
 
     executeEarthquakeEvent(event) {
@@ -2445,6 +2464,12 @@ class ZombieApocalypseGame {
                 break;
             case 'createGroundCrack':
                 this.createGroundCrack(event.x, event.z);
+                break;
+            case 'createMeteorite':
+                this.createMeteorite(event.x, event.z);
+                break;
+            case 'createExplosion':
+                this.createExplosion(event.x, event.z);
                 break;
         }
     }
@@ -2678,7 +2703,7 @@ class ZombieApocalypseGame {
                 if (timeLeft > 0) {
                     const minutes = Math.floor(timeLeft / 60);
                     const seconds = Math.floor(timeLeft % 60);
-                    countdownDisplay.textContent = `SOBREVIVE: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                    countdownDisplay.textContent = `¡CORRE! ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
                 } else {
                     countdownDisplay.textContent = "¡SOBREVIVISTE!";
                 }
@@ -2700,79 +2725,106 @@ class ZombieApocalypseGame {
             return;
         }
 
-        // Intensidad del terremoto basada en el tiempo
-        const progress = earthquakeTime / this.earthquake.duration;
-        if(progress < 0.3) {
-            this.earthquake.intensity = progress * 3 * this.earthquake.maxIntensity; // Incremento gradual
-        } else if(progress < 0.7) {
-            this.earthquake.intensity = this.earthquake.maxIntensity; // Intensidad máxima
-        } else {
-            this.earthquake.intensity = this.earthquake.maxIntensity * (1 - (progress - 0.7) / 0.3); // Decremento
-        }
+        // Intensidad del terremoto - MUCHO MÁS INTENSO DESDE EL INICIO
+        this.earthquake.intensity = this.earthquake.maxIntensity; // Intensidad máxima todo el tiempo
 
-        // Aplicar temblor a la cámara
-        const shakeIntensity = this.earthquake.intensity * 0.1;
-        this.camera.position.x += (Math.random() - 0.5) * shakeIntensity;
-        this.camera.position.y += (Math.random() - 0.5) * shakeIntensity * 0.5;
-        this.camera.position.z += (Math.random() - 0.5) * shakeIntensity;
+        // TEMBLOR EXTREMO DE LA CÁMARA
+        const shakeIntensity = this.earthquake.intensity * 0.4; // 4 veces más intenso
+        this.earthquake.cameraShake.x = (Math.random() - 0.5) * shakeIntensity;
+        this.earthquake.cameraShake.y = (Math.random() - 0.5) * shakeIntensity * 0.8;
+        this.earthquake.cameraShake.z = (Math.random() - 0.5) * shakeIntensity;
 
-        // Temblor del suelo
+        // Aplicar temblor violento constante
+        this.camera.position.x = this.player.position.x + this.earthquake.cameraShake.x;
+        this.camera.position.y = this.player.position.y + 1.6 + this.earthquake.cameraShake.y;
+        this.camera.position.z = this.player.position.z + this.earthquake.cameraShake.z;
+
+        // Temblor violento del suelo
         if(this.ground) {
-            this.ground.position.y = (Math.random() - 0.5) * shakeIntensity * 0.5;
-            this.ground.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * shakeIntensity * 0.02;
+            this.ground.position.y = (Math.random() - 0.5) * shakeIntensity * 2;
+            this.ground.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * shakeIntensity * 0.1;
+            this.ground.rotation.z = (Math.random() - 0.5) * shakeIntensity * 0.05;
         }
 
-        // Actualizar edificios colapsando
+        // METEORITOS - Crear uno cada X tiempo
+        if(earthquakeTime >= this.earthquake.nextMeteoriteTime) {
+            this.createMeteorite();
+            this.earthquake.nextMeteoriteTime += 3; // Cada 3 segundos
+        }
+
+        // EXPLOSIONES - Crear una cada X tiempo
+        if(earthquakeTime >= this.earthquake.nextExplosionTime) {
+            this.createRandomExplosion();
+            this.earthquake.nextExplosionTime += 4; // Cada 4 segundos
+        }
+
+        // Actualizar meteoritos
+        this.updateMeteorites(deltaTime);
+
+        // Actualizar explosiones
+        this.updateExplosions(deltaTime);
+
+        // Actualizar edificios colapsando RÁPIDAMENTE
         this.earthquake.collapsingBuildings.forEach((building, index) => {
             if(building.userData.collapsed) {
-                building.rotation.x += building.userData.fallDirection.x * building.userData.collapseSpeed * deltaTime;
-                building.rotation.z += building.userData.fallDirection.z * building.userData.collapseSpeed * deltaTime;
-                building.position.y -= building.userData.collapseSpeed * deltaTime * 2;
+                building.rotation.x += building.userData.fallDirection.x * building.userData.collapseSpeed * deltaTime * 3; // 3x más rápido
+                building.rotation.z += building.userData.fallDirection.z * building.userData.collapseSpeed * deltaTime * 3;
+                building.position.y -= building.userData.collapseSpeed * deltaTime * 6; // 6x más rápido
 
                 // Remover edificio cuando toque el suelo
-                if(building.position.y < -5) {
+                if(building.position.y < -3) {
+                    // Crear explosión cuando el edificio toca el suelo
+                    this.createExplosion(building.position.x, building.position.z);
                     this.scene.remove(building);
                     this.earthquake.collapsingBuildings.splice(index, 1);
                 }
             }
         });
 
-        // Actualizar escombros cayendo
+        // Actualizar escombros cayendo MÁS RÁPIDO
         this.earthquake.fallingDebris.forEach((debris, index) => {
             if(debris.userData.type === 'fallingDebris') {
-                // Aplicar física
-                debris.userData.velocity.y += this.gravity * deltaTime;
+                // Aplicar física más intensa
+                debris.userData.velocity.y += this.gravity * deltaTime * 2; // Caen más rápido
                 debris.position.add(debris.userData.velocity.clone().multiplyScalar(deltaTime));
 
-                // Rotación
-                debris.rotation.x += debris.userData.angularVelocity.x;
-                debris.rotation.y += debris.userData.angularVelocity.y;
-                debris.rotation.z += debris.userData.angularVelocity.z;
+                // Rotación más violenta
+                debris.rotation.x += debris.userData.angularVelocity.x * 3;
+                debris.rotation.y += debris.userData.angularVelocity.y * 3;
+                debris.rotation.z += debris.userData.angularVelocity.z * 3;
 
                 // Verificar colisión con el suelo
                 if(debris.position.y < 0.5) {
                     debris.position.y = 0.5;
                     debris.userData.velocity.y = 0;
-                    debris.userData.velocity.multiplyScalar(0.3); // Fricción
-                    debris.userData.angularVelocity.multiplyScalar(0.5);
+                    debris.userData.velocity.multiplyScalar(0.1); // Menos fricción, más rebote
+                    debris.userData.angularVelocity.multiplyScalar(0.3);
 
-                    // Convertir en escombro estático después de un tiempo
+                    // Crear mini explosión al impactar
+                    if(Math.random() > 0.7) {
+                        this.createSmallExplosion(debris.position.x, debris.position.z);
+                    }
+
+                    // Convertir en escombro estático más rápido
                     setTimeout(() => {
                         debris.userData.type = 'staticDebris';
-                    }, 2000);
+                    }, 1000);
                 }
             }
         });
 
-        // Sonidos aleatorios de terremoto
-        if(Math.random() < 0.01) {
+        // Sonidos CONSTANTES de terremoto
+        if(Math.random() < 0.1) { // 10x más frecuente
             this.createEarthquakeRumble();
         }
 
-        // Efectos de polvo durante el terremoto
-        if(Math.random() < 0.05) {
+        // Efectos de polvo CONSTANTES
+        if(Math.random() < 0.3) { // 6x más frecuente
             this.createDustCloud();
         }
+
+        // Dañar al jugador si está cerca de colapsos
+        this.checkPlayerDamage();
     }
 
     endEarthquake() {
@@ -2831,6 +2883,437 @@ class ZombieApocalypseGame {
         setTimeout(() => {
             this.scene.remove(dust);
         }, 5000);
+    }
+
+    createMeteorite() {
+        // Crear meteorito que cae del cielo
+        const meteoriteGeometry = new THREE.SphereGeometry(1 + Math.random() * 2, 8, 6);
+        const meteoriteMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xff4400,
+            transparent: true,
+            opacity: 0.9
+        });
+        const meteorite = new THREE.Mesh(meteoriteGeometry, meteoriteMaterial);
+
+        // Posición inicial en el cielo
+        meteorite.position.set(
+            (Math.random() - 0.5) * 200,
+            80 + Math.random() * 20,
+            (Math.random() - 0.5) * 200
+        );
+
+        // Seleccionar punto de impacto aleatorio
+        const targetX = (Math.random() - 0.5) * 150;
+        const targetZ = (Math.random() - 0.5) * 150;
+
+        meteorite.userData = {
+            type: 'meteorite',
+            velocity: new THREE.Vector3(
+                (targetX - meteorite.position.x) * 0.02,
+                -25, // Velocidad de caída
+                (targetZ - meteorite.position.z) * 0.02
+            ),
+            targetX: targetX,
+            targetZ: targetZ,
+            hasExploded: false,
+            trail: []
+        };
+
+        // Efecto de fuego alrededor del meteorito
+        const fireGeometry = new THREE.SphereGeometry(meteorite.geometry.parameters.radius * 1.5, 6, 4);
+        const fireMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xff8800,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending
+        });
+        const fire = new THREE.Mesh(fireGeometry, fireMaterial);
+        meteorite.add(fire);
+
+        // Luz del meteorito
+        const meteoriteLight = new THREE.PointLight(0xff4400, 3, 30);
+        meteorite.add(meteoriteLight);
+
+        this.scene.add(meteorite);
+        this.earthquake.meteorites.push(meteorite);
+
+        // Sonido de meteorito acercándose
+        this.createMeteoriteSound();
+
+        console.log("¡METEORITO CREADO! Posición:", meteorite.position, "Objetivo:", targetX, targetZ);
+    }
+
+    createExplosion(x, z) {
+        // Crear explosión masiva
+        const explosionGroup = new THREE.Group();
+
+        // Esfera de explosión central
+        const explosionGeometry = new THREE.SphereGeometry(3, 16, 12);
+        const explosionMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xff3300,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+        const explosion = new THREE.Mesh(explosionGeometry, explosionMaterial);
+        explosion.position.set(x, 2, z);
+        explosionGroup.add(explosion);
+
+        // Ondas de choque
+        for(let i = 0; i < 3; i++) {
+            const shockwaveGeometry = new THREE.RingGeometry(i * 5, (i + 1) * 6, 32);
+            const shockwaveMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xff6600,
+                transparent: true,
+                opacity: 0.5 - i * 0.15,
+                side: THREE.DoubleSide,
+                blending: THREE.AdditiveBlending
+            });
+            const shockwave = new THREE.Mesh(shockwaveGeometry, shockwaveMaterial);
+            shockwave.rotation.x = -Math.PI / 2;
+            shockwave.position.set(x, 0.1, z);
+            explosionGroup.add(shockwave);
+        }
+
+        // Partículas de fuego
+        const particleCount = 200;
+        const particleGeometry = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(particleCount * 3);
+        const particleVelocities = new Float32Array(particleCount * 3);
+
+        for(let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+            particlePositions[i3] = x + (Math.random() - 0.5) * 2;
+            particlePositions[i3 + 1] = 2 + Math.random() * 3;
+            particlePositions[i3 + 2] = z + (Math.random() - 0.5) * 2;
+
+            const speed = 5 + Math.random() * 10;
+            const angle = Math.random() * Math.PI * 2;
+            const elevation = (Math.random() - 0.5) * Math.PI;
+            
+            particleVelocities[i3] = Math.cos(angle) * Math.cos(elevation) * speed;
+            particleVelocities[i3 + 1] = Math.sin(elevation) * speed;
+            particleVelocities[i3 + 2] = Math.sin(angle) * Math.cos(elevation) * speed;
+        }
+
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        particleGeometry.setAttribute('velocity', new THREE.BufferAttribute(particleVelocities, 3));
+
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0xff4400,
+            size: 2,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+
+        const particles = new THREE.Points(particleGeometry, particleMaterial);
+        explosionGroup.add(particles);
+
+        // Luz de explosión
+        const explosionLight = new THREE.PointLight(0xff3300, 10, 50);
+        explosionLight.position.set(x, 5, z);
+        explosionGroup.add(explosionLight);
+
+        explosionGroup.userData = {
+            type: 'explosion',
+            age: 0,
+            maxAge: 3,
+            x: x,
+            z: z
+        };
+
+        this.scene.add(explosionGroup);
+        this.earthquake.explosions.push(explosionGroup);
+
+        // Sonido de explosión
+        this.createExplosionSound();
+
+        // Dañar al jugador si está cerca
+        const distance = Math.sqrt((this.player.position.x - x) ** 2 + (this.player.position.z - z) ** 2);
+        if(distance < 15) {
+            const damage = Math.max(5, 30 - distance * 2);
+            this.player.health = Math.max(0, this.player.health - damage);
+            this.showMessage(`¡EXPLOSIÓN! -${Math.floor(damage)} salud`);
+            
+            // Efecto de empuje
+            const pushDirection = new THREE.Vector3(
+                this.player.position.x - x,
+                0,
+                this.player.position.z - z
+            ).normalize();
+            this.player.velocity.add(pushDirection.multiplyScalar(20));
+        }
+
+        console.log("¡EXPLOSIÓN CREADA! Posición:", x, z);
+    }
+
+    createRandomExplosion() {
+        const x = (Math.random() - 0.5) * 120;
+        const z = (Math.random() - 0.5) * 120;
+        this.createExplosion(x, z);
+    }
+
+    createSmallExplosion(x, z) {
+        // Explosión pequeña para escombros
+        const explosionGeometry = new THREE.SphereGeometry(1, 8, 6);
+        const explosionMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xff6600,
+            transparent: true,
+            opacity: 0.7,
+            blending: THREE.AdditiveBlending
+        });
+        const explosion = new THREE.Mesh(explosionGeometry, explosionMaterial);
+        explosion.position.set(x, 1, z);
+
+        explosion.userData = {
+            type: 'smallExplosion',
+            age: 0,
+            maxAge: 0.5
+        };
+
+        this.scene.add(explosion);
+        this.earthquake.explosions.push(explosion);
+
+        // Sonido pequeño
+        this.createSmallExplosionSound();
+    }
+
+    updateMeteorites(deltaTime) {
+        this.earthquake.meteorites.forEach((meteorite, index) => {
+            if(meteorite.userData.type === 'meteorite' && !meteorite.userData.hasExploded) {
+                // Mover meteorito
+                meteorite.position.add(meteorite.userData.velocity.clone().multiplyScalar(deltaTime));
+
+                // Rotación del meteorito
+                meteorite.rotation.x += deltaTime * 3;
+                meteorite.rotation.y += deltaTime * 2;
+
+                // Crear estela de fuego
+                if(meteorite.userData.trail.length < 10) {
+                    const trailParticle = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.5, 4, 3),
+                        new THREE.MeshBasicMaterial({ 
+                            color: 0xff6600,
+                            transparent: true,
+                            opacity: 0.4,
+                            blending: THREE.AdditiveBlending
+                        })
+                    );
+                    trailParticle.position.copy(meteorite.position);
+                    this.scene.add(trailParticle);
+                    meteorite.userData.trail.push(trailParticle);
+
+                    // Remover partícula después de un tiempo
+                    setTimeout(() => {
+                        this.scene.remove(trailParticle);
+                    }, 2000);
+                }
+
+                // Verificar impacto con el suelo
+                if(meteorite.position.y <= 2) {
+                    meteorite.userData.hasExploded = true;
+                    
+                    // Crear explosión masiva
+                    this.createExplosion(meteorite.position.x, meteorite.position.z);
+                    
+                    // Crear crater
+                    this.createCrater(meteorite.position.x, meteorite.position.z);
+                    
+                    // Remover meteorito
+                    this.scene.remove(meteorite);
+                    this.earthquake.meteorites.splice(index, 1);
+
+                    console.log("¡METEORITO IMPACTÓ! Posición:", meteorite.position.x, meteorite.position.z);
+                }
+            }
+        });
+    }
+
+    updateExplosions(deltaTime) {
+        this.earthquake.explosions.forEach((explosion, index) => {
+            explosion.userData.age += deltaTime;
+
+            if(explosion.userData.type === 'explosion') {
+                // Expandir explosión
+                const scale = 1 + explosion.userData.age * 2;
+                explosion.scale.set(scale, scale, scale);
+
+                // Reducir opacidad
+                const opacity = 1 - (explosion.userData.age / explosion.userData.maxAge);
+                explosion.children.forEach(child => {
+                    if(child.material) {
+                        child.material.opacity = opacity * (child.material.userData?.baseOpacity || 0.8);
+                    }
+                });
+
+                // Remover cuando expire
+                if(explosion.userData.age >= explosion.userData.maxAge) {
+                    this.scene.remove(explosion);
+                    this.earthquake.explosions.splice(index, 1);
+                }
+            } else if(explosion.userData.type === 'smallExplosion') {
+                // Expandir y desvanecer explosión pequeña
+                const scale = 1 + explosion.userData.age * 4;
+                explosion.scale.set(scale, scale, scale);
+                explosion.material.opacity = 0.7 * (1 - explosion.userData.age / explosion.userData.maxAge);
+
+                if(explosion.userData.age >= explosion.userData.maxAge) {
+                    this.scene.remove(explosion);
+                    this.earthquake.explosions.splice(index, 1);
+                }
+            }
+        });
+    }
+
+    createCrater(x, z) {
+        // Crear crater en el suelo
+        const craterGeometry = new THREE.CylinderGeometry(0, 8, 3, 16);
+        const craterMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x221100,
+            transparent: true,
+            opacity: 0.8
+        });
+        const crater = new THREE.Mesh(craterGeometry, craterMaterial);
+        crater.position.set(x, -1, z);
+        crater.rotation.x = Math.PI;
+
+        this.scene.add(crater);
+    }
+
+    checkPlayerDamage() {
+        // Verificar si el jugador está en peligro
+
+        // Daño por estar cerca de edificios colapsando
+        this.earthquake.collapsingBuildings.forEach(building => {
+            const distance = this.player.position.distanceTo(building.position);
+            if(distance < 12 && Math.random() > 0.95) {
+                this.player.health = Math.max(0, this.player.health - 2);
+                this.showMessage("¡Escombros cayendo! ¡ALÉJATE!");
+            }
+        });
+
+        // Daño por escombros cayendo
+        this.earthquake.fallingDebris.forEach(debris => {
+            const distance = this.player.position.distanceTo(debris.position);
+            if(distance < 2 && debris.position.y > this.player.position.y && Math.random() > 0.8) {
+                this.player.health = Math.max(0, this.player.health - 5);
+                this.showMessage("¡Te golpearon los escombros! -5 salud");
+            }
+        });
+
+        // Verificar si el jugador murió
+        if(this.player.health <= 0) {
+            this.gameOver();
+        }
+    }
+
+    gameOver() {
+        this.earthquake.isActive = false;
+        this.gameState = 'gameOver';
+        
+        // Mostrar pantalla de game over
+        const gameOverDiv = document.createElement('div');
+        gameOverDiv.style.position = 'fixed';
+        gameOverDiv.style.top = '0';
+        gameOverDiv.style.left = '0';
+        gameOverDiv.style.width = '100%';
+        gameOverDiv.style.height = '100%';
+        gameOverDiv.style.background = 'rgba(255,0,0,0.8)';
+        gameOverDiv.style.color = '#fff';
+        gameOverDiv.style.display = 'flex';
+        gameOverDiv.style.flexDirection = 'column';
+        gameOverDiv.style.justifyContent = 'center';
+        gameOverDiv.style.alignItems = 'center';
+        gameOverDiv.style.zIndex = '2000';
+        gameOverDiv.style.fontSize = '3rem';
+        gameOverDiv.style.fontFamily = 'Courier New, monospace';
+        gameOverDiv.innerHTML = `
+            <h1>¡MORISTE EN EL TERREMOTO!</h1>
+            <p style="font-size: 1.5rem; margin: 20px;">No pudiste escapar de la catástrofe</p>
+            <button onclick="location.reload()" style="padding: 15px 30px; font-size: 1.2rem; background: #ff0000; color: white; border: none; cursor: pointer;">REINTENTAR</button>
+        `;
+
+        document.body.appendChild(gameOverDiv);
+
+        console.log("GAME OVER - El jugador murió en el terremoto");
+    }
+
+    createMeteoriteSound() {
+        if(!this.audioContext) return;
+
+        const duration = 4;
+        const currentTime = this.audioContext.currentTime;
+
+        // Sonido de meteorito silbando
+        const osc = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800, currentTime);
+        osc.frequency.linearRampToValueAtTime(200, currentTime + duration);
+
+        gain.gain.setValueAtTime(0, currentTime);
+        gain.gain.linearRampToValueAtTime(0.3, currentTime + 0.5);
+        gain.gain.setValueAtTime(0.3, currentTime + duration - 0.5);
+        gain.gain.linearRampToValueAtTime(0, currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(this.audioContext.destination);
+
+        osc.start(currentTime);
+        osc.stop(currentTime + duration);
+    }
+
+    createExplosionSound() {
+        if(!this.audioContext) return;
+
+        const duration = 2;
+        const currentTime = this.audioContext.currentTime;
+
+        // Sonido de explosión masiva
+        for(let i = 0; i < 3; i++) {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(100 - i * 20, currentTime);
+            osc.frequency.exponentialRampToValueAtTime(20, currentTime + duration);
+
+            gain.gain.setValueAtTime(0, currentTime);
+            gain.gain.linearRampToValueAtTime(0.8, currentTime + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.01, currentTime + duration);
+
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+
+            osc.start(currentTime + i * 0.1);
+            osc.stop(currentTime + duration);
+        }
+    }
+
+    createSmallExplosionSound() {
+        if(!this.audioContext) return;
+
+        const duration = 0.5;
+        const currentTime = this.audioContext.currentTime;
+
+        const osc = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(200, currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, currentTime + duration);
+
+        gain.gain.setValueAtTime(0, currentTime);
+        gain.gain.linearRampToValueAtTime(0.4, currentTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.01, currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(this.audioContext.destination);
+
+        osc.start(currentTime);
+        osc.stop(currentTime + duration);
     }
 
     animate() {
