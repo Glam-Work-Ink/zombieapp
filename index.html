@@ -1,0 +1,76 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estamos Muertos - Simulador 3D</title>
+    <link href="style.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loading-content">
+            <h1>ESTAMOS MUERTOS</h1>
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+            <p>Cargando simulador...</p>
+        </div>
+    </div>
+
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        
+        <div id="hud">
+            <div class="status-panel">
+                <div class="health-bar">
+                    <span>Salud:</span>
+                    <div class="bar">
+                        <div class="fill health-fill"></div>
+                    </div>
+                </div>
+                <div class="stamina-bar">
+                    <span>Resistencia:</span>
+                    <div class="bar">
+                        <div class="fill stamina-fill"></div>
+                    </div>
+                </div>
+                <div class="rope-tension">
+                    <span>Tensión Cuerda:</span>
+                    <div class="tension-meter">
+                        <div class="tension-fill"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="inventory">
+                <div class="supplies">Suministros: <span id="supplies-count">0</span></div>
+                <div class="generators">Generadores: <span id="generators-count">0</span></div>
+            </div>
+            
+            <div class="controls-info">
+                <p>WASD - Moverse | Mouse - Mirar | E - Interactuar | F - Linterna | R - Correr</p>
+                <p>Espacio - Saltar | Shift - Agacharse | Tab - Inventario</p>
+            </div>
+        </div>
+        
+        <div id="interaction-prompt" class="hidden">
+            <p>Presiona E para <span id="interaction-text"></span></p>
+        </div>
+        
+        <div id="crosshair"></div>
+    </div>
+
+    <div id="menu-overlay" class="hidden">
+        <div class="menu-content">
+            <h2>PAUSA</h2>
+            <button onclick="resumeGame()">Continuar</button>
+            <button onclick="restartGame()">Reiniciar</button>
+            <button onclick="toggleSettings()">Configuración</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
