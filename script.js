@@ -51,6 +51,22 @@ class ZombieApocalypseGame {
         this.gameState = 'loading';
         this.gravity = -50;
         
+        // Sistema de terremoto
+        this.earthquake = {
+            isActive: false,
+            startTime: 30, // Empieza a los 30 segundos
+            duration: 60, // 60 segundos de terremoto
+            intensity: 0,
+            maxIntensity: 8,
+            shakeAmount: 0,
+            lastShake: 0,
+            collapsingBuildings: [],
+            fallingDebris: [],
+            groundCracks: [],
+            hasStarted: false,
+            music: null
+        };
+        
         // Emergency alarm system - Más constante y fuerte
         this.alarmSystem = {
             isActive: false,
@@ -694,40 +710,123 @@ class ZombieApocalypseGame {
     }
     
     createSmokeEffect(x, z) {
-        const particleCount = 200;
-        const smokeGeometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(particleCount * 3);
-        const velocities = new Float32Array(particleCount * 3);
-        const ages = new Float32Array(particleCount);
+        // Sistema de humo 3D más realista con múltiples capas
+        const smokeGroup = new THREE.Group();
         
-        for(let i = 0; i < particleCount; i++) {
+        // Capa principal de humo denso
+        const mainSmokeCount = 300;
+        const mainSmokeGeometry = new THREE.BufferGeometry();
+        const mainPositions = new Float32Array(mainSmokeCount * 3);
+        const mainVelocities = new Float32Array(mainSmokeCount * 3);
+        const mainSizes = new Float32Array(mainSmokeCount);
+        const mainOpacities = new Float32Array(mainSmokeCount);
+        const mainAges = new Float32Array(mainSmokeCount);
+        
+        for(let i = 0; i < mainSmokeCount; i++) {
             const i3 = i * 3;
-            positions[i3] = x + (Math.random() - 0.5) * 4;
-            positions[i3 + 1] = Math.random() * 2;
-            positions[i3 + 2] = z + (Math.random() - 0.5) * 4;
+            mainPositions[i3] = x + (Math.random() - 0.5) * 6;
+            mainPositions[i3 + 1] = Math.random() * 3;
+            mainPositions[i3 + 2] = z + (Math.random() - 0.5) * 6;
             
-            velocities[i3] = (Math.random() - 0.5) * 0.5;
-            velocities[i3 + 1] = 1 + Math.random() * 2;
-            velocities[i3 + 2] = (Math.random() - 0.5) * 0.5;
+            mainVelocities[i3] = (Math.random() - 0.5) * 0.8;
+            mainVelocities[i3 + 1] = 1.5 + Math.random() * 3;
+            mainVelocities[i3 + 2] = (Math.random() - 0.5) * 0.8;
             
-            ages[i] = Math.random() * 10;
+            mainSizes[i] = 2 + Math.random() * 4;
+            mainOpacities[i] = 0.3 + Math.random() * 0.5;
+            mainAges[i] = Math.random() * 15;
         }
         
-        smokeGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        smokeGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
-        smokeGeometry.setAttribute('age', new THREE.BufferAttribute(ages, 1));
+        mainSmokeGeometry.setAttribute('position', new THREE.BufferAttribute(mainPositions, 3));
+        mainSmokeGeometry.setAttribute('velocity', new THREE.BufferAttribute(mainVelocities, 3));
+        mainSmokeGeometry.setAttribute('size', new THREE.BufferAttribute(mainSizes, 1));
+        mainSmokeGeometry.setAttribute('opacity', new THREE.BufferAttribute(mainOpacities, 1));
+        mainSmokeGeometry.setAttribute('age', new THREE.BufferAttribute(mainAges, 1));
         
-        const smokeMaterial = new THREE.PointsMaterial({
-            color: 0x333333,
-            size: 2,
+        const mainSmokeMaterial = new THREE.PointsMaterial({
+            color: 0x2a2a2a,
+            size: 3,
             transparent: true,
-            opacity: 0.4,
+            opacity: 0.6,
+            blending: THREE.NormalBlending,
+            depthWrite: false
+        });
+        
+        const mainSmoke = new THREE.Points(mainSmokeGeometry, mainSmokeMaterial);
+        mainSmoke.userData = { type: 'mainSmoke', layer: 'dense' };
+        smokeGroup.add(mainSmoke);
+        
+        // Capa de humo ligero (más alto)
+        const lightSmokeCount = 150;
+        const lightSmokeGeometry = new THREE.BufferGeometry();
+        const lightPositions = new Float32Array(lightSmokeCount * 3);
+        const lightVelocities = new Float32Array(lightSmokeCount * 3);
+        const lightSizes = new Float32Array(lightSmokeCount);
+        
+        for(let i = 0; i < lightSmokeCount; i++) {
+            const i3 = i * 3;
+            lightPositions[i3] = x + (Math.random() - 0.5) * 8;
+            lightPositions[i3 + 1] = 5 + Math.random() * 10;
+            lightPositions[i3 + 2] = z + (Math.random() - 0.5) * 8;
+            
+            lightVelocities[i3] = (Math.random() - 0.5) * 1.2;
+            lightVelocities[i3 + 1] = 0.8 + Math.random() * 1.5;
+            lightVelocities[i3 + 2] = (Math.random() - 0.5) * 1.2;
+            
+            lightSizes[i] = 4 + Math.random() * 6;
+        }
+        
+        lightSmokeGeometry.setAttribute('position', new THREE.BufferAttribute(lightPositions, 3));
+        lightSmokeGeometry.setAttribute('velocity', new THREE.BufferAttribute(lightVelocities, 3));
+        lightSmokeGeometry.setAttribute('size', new THREE.BufferAttribute(lightSizes, 1));
+        
+        const lightSmokeMaterial = new THREE.PointsMaterial({
+            color: 0x555555,
+            size: 5,
+            transparent: true,
+            opacity: 0.3,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        
+        const lightSmoke = new THREE.Points(lightSmokeGeometry, lightSmokeMaterial);
+        lightSmoke.userData = { type: 'lightSmoke', layer: 'light' };
+        smokeGroup.add(lightSmoke);
+        
+        // Chispas y brasas
+        const sparksCount = 50;
+        const sparksGeometry = new THREE.BufferGeometry();
+        const sparksPositions = new Float32Array(sparksCount * 3);
+        const sparksVelocities = new Float32Array(sparksCount * 3);
+        
+        for(let i = 0; i < sparksCount; i++) {
+            const i3 = i * 3;
+            sparksPositions[i3] = x + (Math.random() - 0.5) * 2;
+            sparksPositions[i3 + 1] = Math.random() * 2;
+            sparksPositions[i3 + 2] = z + (Math.random() - 0.5) * 2;
+            
+            sparksVelocities[i3] = (Math.random() - 0.5) * 2;
+            sparksVelocities[i3 + 1] = 2 + Math.random() * 4;
+            sparksVelocities[i3 + 2] = (Math.random() - 0.5) * 2;
+        }
+        
+        sparksGeometry.setAttribute('position', new THREE.BufferAttribute(sparksPositions, 3));
+        sparksGeometry.setAttribute('velocity', new THREE.BufferAttribute(sparksVelocities, 3));
+        
+        const sparksMaterial = new THREE.PointsMaterial({
+            color: 0xff4400,
+            size: 1,
+            transparent: true,
+            opacity: 0.8,
             blending: THREE.AdditiveBlending
         });
         
-        const smoke = new THREE.Points(smokeGeometry, smokeMaterial);
-        smoke.userData = { type: 'smoke' };
-        this.scene.add(smoke);
+        const sparks = new THREE.Points(sparksGeometry, sparksMaterial);
+        sparks.userData = { type: 'sparks' };
+        smokeGroup.add(sparks);
+        
+        smokeGroup.userData = { type: 'smokeGroup', baseX: x, baseZ: z };
+        this.scene.add(smokeGroup);
     }
     
     createCarSmoke(x, z) {
@@ -1477,6 +1576,105 @@ class ZombieApocalypseGame {
         oscillator.stop(this.audioContext.currentTime + duration);
     }
     
+    createEarthquakeMusic() {
+        // Crear música dramática de terremoto usando osciladores
+        if(!this.audioContext) return;
+        
+        const duration = 60; // 60 segundos de música
+        const currentTime = this.audioContext.currentTime;
+        
+        // Bajo dramático
+        const bassOsc = this.audioContext.createOscillator();
+        const bassGain = this.audioContext.createGain();
+        bassOsc.type = 'square';
+        bassOsc.frequency.setValueAtTime(55, currentTime); // La grave
+        bassGain.gain.setValueAtTime(0, currentTime);
+        bassGain.gain.linearRampToValueAtTime(0.3, currentTime + 2);
+        bassGain.gain.setValueAtTime(0.3, currentTime + duration - 5);
+        bassGain.gain.linearRampToValueAtTime(0, currentTime + duration);
+        
+        // Melodía dramática
+        const melodyOsc = this.audioContext.createOscillator();
+        const melodyGain = this.audioContext.createGain();
+        melodyOsc.type = 'sawtooth';
+        melodyOsc.frequency.setValueAtTime(220, currentTime);
+        melodyGain.gain.setValueAtTime(0, currentTime);
+        melodyGain.gain.linearRampToValueAtTime(0.2, currentTime + 3);
+        
+        // Secuencia melódica dramática
+        const melody = [220, 196, 175, 165, 147, 131, 123, 110];
+        melody.forEach((freq, index) => {
+            melodyOsc.frequency.setValueAtTime(freq, currentTime + 3 + index * 7);
+        });
+        
+        // Percusión/ritmo
+        const rhythmOsc = this.audioContext.createOscillator();
+        const rhythmGain = this.audioContext.createGain();
+        rhythmOsc.type = 'triangle';
+        rhythmOsc.frequency.setValueAtTime(80, currentTime);
+        rhythmGain.gain.setValueAtTime(0, currentTime);
+        rhythmGain.gain.linearRampToValueAtTime(0.4, currentTime + 1);
+        
+        // Filtros para efectos dramáticos
+        const filter = this.audioContext.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1000, currentTime);
+        filter.Q.setValueAtTime(0.5, currentTime);
+        
+        // Conectar todo
+        bassOsc.connect(bassGain);
+        melodyOsc.connect(melodyGain);
+        rhythmOsc.connect(rhythmGain);
+        
+        bassGain.connect(filter);
+        melodyGain.connect(filter);
+        rhythmGain.connect(filter);
+        filter.connect(this.audioContext.destination);
+        
+        // Iniciar osciladores
+        bassOsc.start(currentTime);
+        melodyOsc.start(currentTime);
+        rhythmOsc.start(currentTime);
+        
+        // Detener osciladores
+        bassOsc.stop(currentTime + duration);
+        melodyOsc.stop(currentTime + duration);
+        rhythmOsc.stop(currentTime + duration);
+        
+        this.earthquake.music = { bassOsc, melodyOsc, rhythmOsc };
+    }
+    
+    createEarthquakeRumble() {
+        if(!this.audioContext) return;
+        
+        const duration = 5;
+        const currentTime = this.audioContext.currentTime;
+        
+        // Sonido de temblor profundo
+        const rumbleOsc = this.audioContext.createOscillator();
+        const rumbleGain = this.audioContext.createGain();
+        rumbleOsc.type = 'sawtooth';
+        rumbleOsc.frequency.setValueAtTime(30, currentTime);
+        rumbleOsc.frequency.linearRampToValueAtTime(60, currentTime + duration);
+        
+        rumbleGain.gain.setValueAtTime(0, currentTime);
+        rumbleGain.gain.linearRampToValueAtTime(0.8, currentTime + 0.5);
+        rumbleGain.gain.setValueAtTime(0.8, currentTime + duration - 1);
+        rumbleGain.gain.linearRampToValueAtTime(0, currentTime + duration);
+        
+        // Filtro para sonido más profundo
+        const lowPassFilter = this.audioContext.createBiquadFilter();
+        lowPassFilter.type = 'lowpass';
+        lowPassFilter.frequency.setValueAtTime(100, currentTime);
+        
+        rumbleOsc.connect(rumbleGain);
+        rumbleGain.connect(lowPassFilter);
+        lowPassFilter.connect(this.audioContext.destination);
+        
+        rumbleOsc.start(currentTime);
+        rumbleOsc.stop(currentTime + duration);
+    }
+    
     createApocalypseSiren() {
         const duration = 12; // 12 segundos de sirena (más largo)
         const currentTime = this.audioContext.currentTime;
@@ -1837,9 +2035,81 @@ class ZombieApocalypseGame {
         
         this.particles.geometry.attributes.position.needsUpdate = true;
         
-        // Update smoke effects
+        // Update smoke effects mejorados
         this.scene.children.forEach(child => {
-            if(child.userData && (child.userData.type === 'smoke' || child.userData.type === 'carSmoke')) {
+            if(child.userData && child.userData.type === 'smokeGroup') {
+                child.children.forEach(smokeLayer => {
+                    if(smokeLayer.userData.type === 'mainSmoke' || 
+                       smokeLayer.userData.type === 'lightSmoke' || 
+                       smokeLayer.userData.type === 'sparks') {
+                        
+                        const smokePositions = smokeLayer.geometry.attributes.position.array;
+                        const smokeVelocities = smokeLayer.geometry.attributes.velocity.array;
+                        
+                        for(let i = 0; i < smokePositions.length; i += 3) {
+                            // Movimiento base
+                            smokePositions[i] += smokeVelocities[i] * deltaTime;
+                            smokePositions[i + 1] += smokeVelocities[i + 1] * deltaTime;
+                            smokePositions[i + 2] += smokeVelocities[i + 2] * deltaTime;
+                            
+                            // Efectos de viento turbulento
+                            const turbulence = Math.sin(Date.now() * 0.001 + i) * 0.5;
+                            smokeVelocities[i] += turbulence * deltaTime;
+                            smokeVelocities[i + 2] += Math.cos(Date.now() * 0.0015 + i) * 0.3 * deltaTime;
+                            
+                            // Expansión del humo a medida que sube
+                            if(smokeLayer.userData.type === 'mainSmoke') {
+                                smokeVelocities[i] *= 1.01; // Expansión horizontal
+                                smokeVelocities[i + 2] *= 1.01;
+                            }
+                            
+                            // Reset particles que van muy alto
+                            const maxHeight = smokeLayer.userData.type === 'lightSmoke' ? 30 : 20;
+                            if(smokePositions[i + 1] > maxHeight) {
+                                smokePositions[i] = child.userData.baseX + (Math.random() - 0.5) * 4;
+                                smokePositions[i + 1] = Math.random() * 2;
+                                smokePositions[i + 2] = child.userData.baseZ + (Math.random() - 0.5) * 4;
+                                
+                                smokeVelocities[i] = (Math.random() - 0.5) * 0.8;
+                                smokeVelocities[i + 1] = 1.5 + Math.random() * 3;
+                                smokeVelocities[i + 2] = (Math.random() - 0.5) * 0.8;
+                            }
+                            
+                            // Chispas caen por gravedad
+                            if(smokeLayer.userData.type === 'sparks') {
+                                smokeVelocities[i + 1] -= this.gravity * deltaTime * 0.1;
+                                
+                                if(smokePositions[i + 1] < 0) {
+                                    smokePositions[i] = child.userData.baseX + (Math.random() - 0.5) * 2;
+                                    smokePositions[i + 1] = Math.random() * 2;
+                                    smokePositions[i + 2] = child.userData.baseZ + (Math.random() - 0.5) * 2;
+                                    
+                                    smokeVelocities[i] = (Math.random() - 0.5) * 2;
+                                    smokeVelocities[i + 1] = 2 + Math.random() * 4;
+                                    smokeVelocities[i + 2] = (Math.random() - 0.5) * 2;
+                                }
+                            }
+                        }
+                        
+                        smokeLayer.geometry.attributes.position.needsUpdate = true;
+                        
+                        // Efectos visuales dinámicos
+                        if(smokeLayer.userData.type === 'mainSmoke') {
+                            // Cambio de opacidad basado en viento
+                            const windEffect = Math.sin(Date.now() * 0.002) * 0.1;
+                            smokeLayer.material.opacity = 0.6 + windEffect;
+                        }
+                        
+                        if(smokeLayer.userData.type === 'sparks') {
+                            // Parpadeo de chispas
+                            smokeLayer.material.opacity = 0.4 + Math.random() * 0.4;
+                        }
+                    }
+                });
+            }
+            
+            // Mantener compatibilidad con humo viejo
+            else if(child.userData && (child.userData.type === 'smoke' || child.userData.type === 'carSmoke')) {
                 const smokePositions = child.geometry.attributes.position.array;
                 const smokeVelocities = child.geometry.attributes.velocity.array;
                 
@@ -1848,20 +2118,17 @@ class ZombieApocalypseGame {
                     smokePositions[i + 1] += smokeVelocities[i + 1] * deltaTime;
                     smokePositions[i + 2] += smokeVelocities[i + 2] * deltaTime;
                     
-                    // Reset smoke particles that go too high
                     if(smokePositions[i + 1] > 15) {
                         smokePositions[i + 1] = 1;
                         smokeVelocities[i + 1] = 0.5 + Math.random();
                     }
                     
-                    // Wind effect on smoke
                     smokeVelocities[i] += (Math.random() - 0.5) * 0.1 * deltaTime;
                     smokeVelocities[i + 2] += (Math.random() - 0.5) * 0.1 * deltaTime;
                 }
                 
                 child.geometry.attributes.position.needsUpdate = true;
                 
-                // Fade smoke over time
                 if(child.material.opacity > 0.1) {
                     child.material.opacity -= deltaTime * 0.05;
                 }
@@ -1926,6 +2193,206 @@ class ZombieApocalypseGame {
         }
     }
     
+    startEarthquake() {
+        if(this.earthquake.hasStarted) return;
+        
+        this.earthquake.isActive = true;
+        this.earthquake.hasStarted = true;
+        this.earthquake.startTime = Date.now() / 1000;
+        
+        // Reproducir música dramática de terremoto
+        this.createEarthquakeMusic();
+        
+        // Sonido inicial de terremoto
+        this.createEarthquakeRumble();
+        
+        // Mensaje de advertencia
+        this.showMessage("¡TERREMOTO! ¡BUSCA REFUGIO INMEDIATAMENTE!");
+        
+        // Cambiar ambiente visual
+        this.scene.fog.density = 0.03;
+        this.scene.fog.color.setHex(0x553322);
+        
+        // Programar colapso de edificios
+        this.scheduleEarthquakeEvents();
+        
+        console.log("¡TERREMOTO INICIADO! Supervive durante 60 segundos!");
+    }
+    
+    scheduleEarthquakeEvents() {
+        const events = [
+            { time: 5, action: 'collapseBuilding', buildingIndex: 0 },
+            { time: 12, action: 'collapseBuilding', buildingIndex: 2 },
+            { time: 18, action: 'createGroundCrack', x: -20, z: -30 },
+            { time: 25, action: 'collapseBuilding', buildingIndex: 4 },
+            { time: 35, action: 'createGroundCrack', x: 40, z: 20 },
+            { time: 42, action: 'collapseBuilding', buildingIndex: 6 },
+            { time: 50, action: 'createGroundCrack', x: -50, z: 40 },
+            { time: 55, action: 'collapseBuilding', buildingIndex: 8 }
+        ];
+        
+        events.forEach(event => {
+            setTimeout(() => {
+                if(this.earthquake.isActive) {
+                    this.executeEarthquakeEvent(event);
+                }
+            }, event.time * 1000);
+        });
+    }
+    
+    executeEarthquakeEvent(event) {
+        switch(event.action) {
+            case 'collapseBuilding':
+                this.collapseBuilding(event.buildingIndex);
+                break;
+            case 'createGroundCrack':
+                this.createGroundCrack(event.x, event.z);
+                break;
+        }
+    }
+    
+    collapseBuilding(index) {
+        if(index >= this.buildings.length) return;
+        
+        const building = this.buildings[index];
+        if(!building || building.userData.collapsed) return;
+        
+        building.userData.collapsed = true;
+        building.userData.collapseSpeed = 2 + Math.random() * 3;
+        building.userData.fallDirection = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.5,
+            -1,
+            (Math.random() - 0.5) * 0.5
+        );
+        
+        this.earthquake.collapsingBuildings.push(building);
+        
+        // Sonido de colapso
+        this.createBuildingCollapseSound();
+        
+        // Crear escombros
+        this.createCollapseDebris(building.position);
+        
+        // Mensaje de peligro
+        this.showMessage("¡EDIFICIO COLAPSANDO! ¡ALÉJATE!");
+    }
+    
+    createGroundCrack(x, z) {
+        const crackGeometry = new THREE.PlaneGeometry(20, 2, 10, 1);
+        const crackMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x000000,
+            transparent: true,
+            opacity: 0.8 
+        });
+        
+        // Deformar la grieta
+        const vertices = crackGeometry.attributes.position.array;
+        for(let i = 0; i < vertices.length; i += 3) {
+            vertices[i + 2] += (Math.random() - 0.5) * 0.5;
+        }
+        crackGeometry.attributes.position.needsUpdate = true;
+        
+        const crack = new THREE.Mesh(crackGeometry, crackMaterial);
+        crack.rotation.x = -Math.PI / 2;
+        crack.rotation.z = Math.random() * Math.PI;
+        crack.position.set(x, 0.05, z);
+        
+        this.scene.add(crack);
+        this.earthquake.groundCracks.push(crack);
+        
+        // Sonido de grieta
+        this.createGroundCrackSound();
+    }
+    
+    createBuildingCollapseSound() {
+        if(!this.audioContext) return;
+        
+        const duration = 3;
+        const currentTime = this.audioContext.currentTime;
+        
+        // Sonido de colapso con múltiples frecuencias
+        for(let i = 0; i < 5; i++) {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(50 + i * 20, currentTime);
+            osc.frequency.linearRampToValueAtTime(20 + i * 10, currentTime + duration);
+            
+            gain.gain.setValueAtTime(0, currentTime);
+            gain.gain.linearRampToValueAtTime(0.3, currentTime + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.01, currentTime + duration);
+            
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+            
+            osc.start(currentTime + i * 0.1);
+            osc.stop(currentTime + duration);
+        }
+    }
+    
+    createGroundCrackSound() {
+        if(!this.audioContext) return;
+        
+        const duration = 2;
+        const currentTime = this.audioContext.currentTime;
+        
+        const osc = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+        
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(80, currentTime);
+        osc.frequency.linearRampToValueAtTime(40, currentTime + duration);
+        
+        gain.gain.setValueAtTime(0, currentTime);
+        gain.gain.linearRampToValueAtTime(0.4, currentTime + 0.2);
+        gain.gain.exponentialRampToValueAtTime(0.01, currentTime + duration);
+        
+        osc.connect(gain);
+        gain.connect(this.audioContext.destination);
+        
+        osc.start(currentTime);
+        osc.stop(currentTime + duration);
+    }
+    
+    createCollapseDebris(position) {
+        for(let i = 0; i < 15; i++) {
+            const debrisGeometry = new THREE.BoxGeometry(
+                0.5 + Math.random() * 2,
+                0.5 + Math.random() * 2,
+                0.5 + Math.random() * 2
+            );
+            const debrisMaterial = new THREE.MeshLambertMaterial({ 
+                color: new THREE.Color().setHSL(0, 0, 0.1 + Math.random() * 0.3) 
+            });
+            const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
+            
+            debris.position.set(
+                position.x + (Math.random() - 0.5) * 10,
+                position.y + Math.random() * 5,
+                position.z + (Math.random() - 0.5) * 10
+            );
+            
+            debris.userData = {
+                type: 'fallingDebris',
+                velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 5,
+                    Math.random() * 5,
+                    (Math.random() - 0.5) * 5
+                ),
+                angularVelocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.2,
+                    (Math.random() - 0.5) * 0.2,
+                    (Math.random() - 0.5) * 0.2
+                )
+            };
+            
+            debris.castShadow = true;
+            this.scene.add(debris);
+            this.earthquake.fallingDebris.push(debris);
+        }
+    }
+    
     activateAlarm() {
         this.alarmSystem.isActive = true;
         this.alarmSystem.lastAlarmTime = Date.now() / 1000;
@@ -1984,6 +2451,157 @@ class ZombieApocalypseGame {
         }
     }
     
+    updateEarthquake(deltaTime) {
+        const currentTime = this.clock.elapsedTime;
+        
+        // Verificar si debe iniciar el terremoto
+        if(!this.earthquake.hasStarted && currentTime >= this.earthquake.startTime) {
+            this.startEarthquake();
+        }
+        
+        if(!this.earthquake.isActive) return;
+        
+        const earthquakeTime = currentTime - this.earthquake.startTime;
+        
+        // Verificar si debe terminar el terremoto
+        if(earthquakeTime >= this.earthquake.duration) {
+            this.endEarthquake();
+            return;
+        }
+        
+        // Intensidad del terremoto basada en el tiempo
+        const progress = earthquakeTime / this.earthquake.duration;
+        if(progress < 0.3) {
+            this.earthquake.intensity = progress * 3 * this.earthquake.maxIntensity; // Incremento gradual
+        } else if(progress < 0.7) {
+            this.earthquake.intensity = this.earthquake.maxIntensity; // Intensidad máxima
+        } else {
+            this.earthquake.intensity = this.earthquake.maxIntensity * (1 - (progress - 0.7) / 0.3); // Decremento
+        }
+        
+        // Aplicar temblor a la cámara
+        const shakeIntensity = this.earthquake.intensity * 0.1;
+        this.camera.position.x += (Math.random() - 0.5) * shakeIntensity;
+        this.camera.position.y += (Math.random() - 0.5) * shakeIntensity * 0.5;
+        this.camera.position.z += (Math.random() - 0.5) * shakeIntensity;
+        
+        // Temblor del suelo
+        if(this.ground) {
+            this.ground.position.y = (Math.random() - 0.5) * shakeIntensity * 0.5;
+            this.ground.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * shakeIntensity * 0.02;
+        }
+        
+        // Actualizar edificios colapsando
+        this.earthquake.collapsingBuildings.forEach((building, index) => {
+            if(building.userData.collapsed) {
+                building.rotation.x += building.userData.fallDirection.x * building.userData.collapseSpeed * deltaTime;
+                building.rotation.z += building.userData.fallDirection.z * building.userData.collapseSpeed * deltaTime;
+                building.position.y -= building.userData.collapseSpeed * deltaTime * 2;
+                
+                // Remover edificio cuando toque el suelo
+                if(building.position.y < -5) {
+                    this.scene.remove(building);
+                    this.earthquake.collapsingBuildings.splice(index, 1);
+                }
+            }
+        });
+        
+        // Actualizar escombros cayendo
+        this.earthquake.fallingDebris.forEach((debris, index) => {
+            if(debris.userData.type === 'fallingDebris') {
+                // Aplicar física
+                debris.userData.velocity.y += this.gravity * deltaTime;
+                debris.position.add(debris.userData.velocity.clone().multiplyScalar(deltaTime));
+                
+                // Rotación
+                debris.rotation.x += debris.userData.angularVelocity.x;
+                debris.rotation.y += debris.userData.angularVelocity.y;
+                debris.rotation.z += debris.userData.angularVelocity.z;
+                
+                // Verificar colisión con el suelo
+                if(debris.position.y < 0.5) {
+                    debris.position.y = 0.5;
+                    debris.userData.velocity.y = 0;
+                    debris.userData.velocity.multiplyScalar(0.3); // Fricción
+                    debris.userData.angularVelocity.multiplyScalar(0.5);
+                    
+                    // Convertir en escombro estático después de un tiempo
+                    setTimeout(() => {
+                        debris.userData.type = 'staticDebris';
+                    }, 2000);
+                }
+            }
+        });
+        
+        // Sonidos aleatorios de terremoto
+        if(Math.random() < 0.01) {
+            this.createEarthquakeRumble();
+        }
+        
+        // Efectos de polvo durante el terremoto
+        if(Math.random() < 0.05) {
+            this.createDustCloud();
+        }
+    }
+    
+    endEarthquake() {
+        this.earthquake.isActive = false;
+        this.earthquake.intensity = 0;
+        
+        // Restaurar posición del suelo
+        if(this.ground) {
+            this.ground.position.y = 0;
+            this.ground.rotation.x = -Math.PI / 2;
+        }
+        
+        // Restaurar niebla
+        this.scene.fog.density = 0.01;
+        this.scene.fog.color.setHex(0x330000);
+        
+        // Mensaje de supervivencia
+        this.showMessage("¡HAS SOBREVIVIDO AL TERREMOTO! Busca refugio seguro.");
+        
+        console.log("Terremoto terminado - ¡Supervivencia exitosa!");
+    }
+    
+    createDustCloud() {
+        const dustCount = 100;
+        const dustGeometry = new THREE.BufferGeometry();
+        const dustPositions = new Float32Array(dustCount * 3);
+        const dustVelocities = new Float32Array(dustCount * 3);
+        
+        for(let i = 0; i < dustCount; i++) {
+            const i3 = i * 3;
+            dustPositions[i3] = (Math.random() - 0.5) * 100;
+            dustPositions[i3 + 1] = Math.random() * 5;
+            dustPositions[i3 + 2] = (Math.random() - 0.5) * 100;
+            
+            dustVelocities[i3] = (Math.random() - 0.5) * 2;
+            dustVelocities[i3 + 1] = 1 + Math.random() * 3;
+            dustVelocities[i3 + 2] = (Math.random() - 0.5) * 2;
+        }
+        
+        dustGeometry.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+        dustGeometry.setAttribute('velocity', new THREE.BufferAttribute(dustVelocities, 3));
+        
+        const dustMaterial = new THREE.PointsMaterial({
+            color: 0x8B7355,
+            size: 3,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const dust = new THREE.Points(dustGeometry, dustMaterial);
+        dust.userData = { type: 'earthquakeDust', lifetime: 5 };
+        this.scene.add(dust);
+        
+        // Remover polvo después de un tiempo
+        setTimeout(() => {
+            this.scene.remove(dust);
+        }, 5000);
+    }
+    
     animate() {
         requestAnimationFrame(() => this.animate());
         
@@ -1998,6 +2616,7 @@ class ZombieApocalypseGame {
         this.updateParticles(deltaTime);
         this.updateLighting(deltaTime);
         this.updateAlarmSystem(deltaTime);
+        this.updateEarthquake(deltaTime);
         
         this.renderer.render(this.scene, this.camera);
     }
