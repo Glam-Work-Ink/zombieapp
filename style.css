@@ -133,6 +133,47 @@ body {
     border-top: 1px solid #ff6666;
 }
 
+.earthquake-timer {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #ffaa00;
+}
+
+.timer-display {
+    margin-left: 10px;
+    display: inline-block;
+    background: rgba(255, 170, 0, 0.2);
+    border: 2px solid #ffaa00;
+    border-radius: 5px;
+    padding: 8px 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+#earthquake-countdown {
+    color: #ffaa00;
+    text-shadow: 0 0 10px #ffaa00;
+    animation: countdown-pulse 1s infinite;
+}
+
+.earthquake-countdown-critical {
+    color: #ff0000 !important;
+    border-color: #ff0000 !important;
+    background: rgba(255, 0, 0, 0.3) !important;
+    animation: countdown-critical 0.5s infinite !important;
+}
+
+@keyframes countdown-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(0.95); }
+}
+
+@keyframes countdown-critical {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.1); }
+}
+
 .tension-meter {
     width: 200px;
     height: 20px;
