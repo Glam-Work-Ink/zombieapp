@@ -2656,12 +2656,22 @@ class ZombieApocalypseGame {
         const timeUntilEarthquake = this.earthquake.startTime - currentTime;
         const countdownDisplay = document.getElementById('earthquake-countdown');
 
-        if (timeUntilEarthquake > 0) {
-            const minutes = Math.floor(timeUntilEarthquake / 60);
-            const seconds = Math.floor(timeUntilEarthquake % 60);
-            countdownDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        } else if (!this.earthquake.hasStarted){
-            countdownDisplay.textContent = "¡¡¡TERREMOTO!!!";
+        if (countdownDisplay) {
+            if (timeUntilEarthquake > 0) {
+                const minutes = Math.floor(timeUntilEarthquake / 60);
+                const seconds = Math.floor(timeUntilEarthquake % 60);
+                countdownDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                
+                // Cambiar color a crítico cuando quedan menos de 10 segundos
+                if (timeUntilEarthquake <= 10) {
+                    countdownDisplay.parentElement.classList.add('earthquake-countdown-critical');
+                } else {
+                    countdownDisplay.parentElement.classList.remove('earthquake-countdown-critical');
+                }
+            } else if (!this.earthquake.hasStarted){
+                countdownDisplay.textContent = "¡¡¡TERREMOTO!!!";
+                countdownDisplay.parentElement.classList.add('earthquake-countdown-critical');
+            }
         }
 
         // Verificar si debe iniciar el terremoto
