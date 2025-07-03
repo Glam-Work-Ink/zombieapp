@@ -51,14 +51,15 @@ class ZombieApocalypseGame {
         this.gameState = 'loading';
         this.gravity = -50;
         
-        // Emergency alarm system
+        // Emergency alarm system - Más constante y fuerte
         this.alarmSystem = {
             isActive: false,
             lastAlarmTime: 0,
-            alarmDuration: 30, // 30 seconds on
-            alarmInterval: 300, // 5 minutes between alarms
+            alarmDuration: 45, // 45 seconds on (más largo)
+            alarmInterval: 90, // 1.5 minutos entre alarmas (más frecuente)
             lights: [],
-            sound: null
+            sound: null,
+            continuousAlarm: null
         };
         
         // Abandoned house
@@ -121,6 +122,9 @@ class ZombieApocalypseGame {
         moonLight.shadow.mapSize.width = 2048;
         moonLight.shadow.mapSize.height = 2048;
         this.scene.add(moonLight);
+        
+        // AURORA BOREAL
+        this.createAuroraBoreal();
         
         // Luces de emergencia parpadeantes
         for(let i = 0; i < 5; i++) {
@@ -188,6 +192,65 @@ class ZombieApocalypseGame {
         
         // Casa abandonada
         this.createAbandonedHouse();
+    }
+    
+    createAuroraBoreal() {
+        // Crear múltiples capas de aurora boreal
+        this.auroraLights = [];
+        
+        // Aurora principal - Verde
+        const aurora1Geometry = new THREE.PlaneGeometry(300, 80);
+        const aurora1Material = new THREE.MeshBasicMaterial({
+            color: 0x00ff88,
+            transparent: true,
+            opacity: 0.15,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+        const aurora1 = new THREE.Mesh(aurora1Geometry, aurora1Material);
+        aurora1.position.set(0, 60, -150);
+        aurora1.rotation.x = -0.3;
+        aurora1.userData = { type: 'aurora', baseOpacity: 0.15, waveSpeed: 0.8 };
+        this.scene.add(aurora1);
+        this.auroraLights.push(aurora1);
+        
+        // Aurora secundaria - Azul-Verde
+        const aurora2Geometry = new THREE.PlaneGeometry(250, 60);
+        const aurora2Material = new THREE.MeshBasicMaterial({
+            color: 0x0088ff,
+            transparent: true,
+            opacity: 0.12,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+        const aurora2 = new THREE.Mesh(aurora2Geometry, aurora2Material);
+        aurora2.position.set(-80, 55, -140);
+        aurora2.rotation.x = -0.4;
+        aurora2.rotation.y = 0.2;
+        aurora2.userData = { type: 'aurora', baseOpacity: 0.12, waveSpeed: 1.2 };
+        this.scene.add(aurora2);
+        this.auroraLights.push(aurora2);
+        
+        // Aurora tercera - Violeta
+        const aurora3Geometry = new THREE.PlaneGeometry(200, 50);
+        const aurora3Material = new THREE.MeshBasicMaterial({
+            color: 0x8800ff,
+            transparent: true,
+            opacity: 0.10,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+        const aurora3 = new THREE.Mesh(aurora3Geometry, aurora3Material);
+        aurora3.position.set(100, 50, -130);
+        aurora3.rotation.x = -0.5;
+        aurora3.rotation.y = -0.3;
+        aurora3.userData = { type: 'aurora', baseOpacity: 0.10, waveSpeed: 0.6 };
+        this.scene.add(aurora3);
+        this.auroraLights.push(aurora3);
+        
+        // Luz ambiental de aurora que cambia de color
+        this.auroraAmbientLight = new THREE.AmbientLight(0x004422, 0.1);
+        this.scene.add(this.auroraAmbientLight);
     }
     
     createBuildings() {
@@ -1195,16 +1258,27 @@ class ZombieApocalypseGame {
             }
         });
         
-        // Mouse controls
+        // Mouse controls - Arreglado para 360 grados
+        this.mouseX = 0;
+        this.mouseY = 0;
+        
         document.addEventListener('mousemove', (event) => {
             if(!this.controls.isPointerLocked) return;
             
             const movementX = event.movementX || 0;
             const movementY = event.movementY || 0;
             
-            this.camera.rotation.y -= movementX * 0.002;
-            this.camera.rotation.x -= movementY * 0.002;
-            this.camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.camera.rotation.x));
+            // Controles de rotación más suaves y sin bloqueo
+            this.mouseX -= movementX * 0.002;
+            this.mouseY -= movementY * 0.002;
+            
+            // Limitar solo la rotación vertical para evitar dar vueltas completas verticalmente
+            this.mouseY = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.mouseY));
+            
+            // Aplicar rotaciones
+            this.camera.rotation.y = this.mouseX;
+            this.camera.rotation.x = this.mouseY;
+            this.camera.rotation.z = 0; // Evitar inclinación extraña
         });
         
         // Pointer lock
@@ -1404,31 +1478,31 @@ class ZombieApocalypseGame {
     }
     
     createApocalypseSiren() {
-        const duration = 8; // 8 segundos de sirena
+        const duration = 12; // 12 segundos de sirena (más largo)
         const currentTime = this.audioContext.currentTime;
         
-        // Sirena principal - sonido ondulante característico
+        // Sirena principal - sonido ondulante característico MÁS FUERTE
         const mainOscillator = this.audioContext.createOscillator();
         const mainGain = this.audioContext.createGain();
         const modulator = this.audioContext.createOscillator();
         const modulatorGain = this.audioContext.createGain();
         
-        // Configurar modulador para el efecto ondulante
-        modulator.frequency.setValueAtTime(0.8, currentTime); // 0.8 Hz para ondulación lenta
-        modulatorGain.gain.setValueAtTime(200, currentTime); // Profundidad de modulación
+        // Configurar modulador para el efecto ondulante MÁS INTENSO
+        modulator.frequency.setValueAtTime(1.5, currentTime); // Más rápido para más intensidad
+        modulatorGain.gain.setValueAtTime(350, currentTime); // Mayor profundidad de modulación
         
         // Conectar modulador a la frecuencia principal
         modulator.connect(modulatorGain);
         modulatorGain.connect(mainOscillator.frequency);
         
-        // Frecuencia base de la sirena (típica de sirenas de emergencia)
-        mainOscillator.frequency.setValueAtTime(400, currentTime);
+        // Frecuencia base de la sirena MÁS PENETRANTE
+        mainOscillator.frequency.setValueAtTime(500, currentTime); // Frecuencia más alta
         mainOscillator.type = 'sawtooth'; // Sonido más áspero y penetrante
         
-        // Volumen principal con fade in/out
+        // Volumen principal MÁS FUERTE
         mainGain.gain.setValueAtTime(0, currentTime);
-        mainGain.gain.linearRampToValueAtTime(0.4, currentTime + 0.5);
-        mainGain.gain.setValueAtTime(0.4, currentTime + duration - 1);
+        mainGain.gain.linearRampToValueAtTime(0.7, currentTime + 0.3); // Más fuerte y más rápido
+        mainGain.gain.setValueAtTime(0.7, currentTime + duration - 0.5);
         mainGain.gain.linearRampToValueAtTime(0, currentTime + duration);
         
         // Segunda sirena una octava más alta para armonía
@@ -1492,8 +1566,8 @@ class ZombieApocalypseGame {
         filterNode.frequency.setValueAtTime(1500, currentTime);
         filterNode.Q.setValueAtTime(0.7, currentTime);
         
-        // Volumen maestro
-        masterGain.gain.setValueAtTime(0.6, currentTime);
+        // Volumen maestro MÁS FUERTE
+        masterGain.gain.setValueAtTime(0.9, currentTime);
         
         // Conectar todo
         mainOscillator.connect(mainGain);
@@ -1524,13 +1598,13 @@ class ZombieApocalypseGame {
         bassOscillator.stop(currentTime + duration);
         bassModulator.stop(currentTime + duration);
         
-        // Programar repetición de la sirena cada 10 segundos mientras la alarma esté activa
+        // Programar repetición de la sirena cada 5 segundos mientras la alarma esté activa (MÁS CONSTANTE)
         if(this.alarmSystem.isActive) {
             setTimeout(() => {
                 if(this.alarmSystem.isActive) {
                     this.createApocalypseSiren();
                 }
-            }, 10000);
+            }, 5000); // Cada 5 segundos en lugar de 10
         }
     }
     
@@ -1814,17 +1888,20 @@ class ZombieApocalypseGame {
     updateAlarmSystem(deltaTime) {
         const currentTime = Date.now() / 1000; // tiempo en segundos
         
-        // Verificar si debe activarse la alarma (cada 5 minutos)
+        // Verificar si debe activarse la alarma (cada 1.5 minutos - MÁS FRECUENTE)
         if(!this.alarmSystem.isActive && 
            currentTime - this.alarmSystem.lastAlarmTime > this.alarmSystem.alarmInterval) {
             this.activateAlarm();
         }
         
-        // Verificar si debe desactivarse la alarma (después de 30 segundos)
+        // Verificar si debe desactivarse la alarma (después de 45 segundos)
         if(this.alarmSystem.isActive && 
            currentTime - this.alarmSystem.lastAlarmTime > this.alarmSystem.alarmDuration) {
             this.deactivateAlarm();
         }
+        
+        // Actualizar aurora boreal
+        this.updateAuroraBoreal(deltaTime);
         
         // Actualizar luces giratorias de alarma
         if(this.alarmSystem.isActive) {
@@ -1923,6 +2000,43 @@ class ZombieApocalypseGame {
         this.updateAlarmSystem(deltaTime);
         
         this.renderer.render(this.scene, this.camera);
+    }
+    
+    updateAuroraBoreal(deltaTime) {
+        if(!this.auroraLights) return;
+        
+        const time = Date.now() * 0.001; // tiempo en segundos
+        
+        // Animar cada aurora con ondulaciones y cambios de color
+        this.auroraLights.forEach((aurora, index) => {
+            if(aurora.userData.type === 'aurora') {
+                // Ondulación de opacidad
+                const wave = Math.sin(time * aurora.userData.waveSpeed + index * 2) * 0.5 + 0.5;
+                aurora.material.opacity = aurora.userData.baseOpacity + wave * 0.1;
+                
+                // Movimiento sutil
+                aurora.position.y = 50 + index * 5 + Math.sin(time * 0.3 + index) * 3;
+                aurora.rotation.z = Math.sin(time * 0.2 + index) * 0.1;
+                
+                // Cambio de color gradual
+                const hue = (time * 0.1 + index * 0.3) % 1;
+                if(index === 0) {
+                    aurora.material.color.setHSL(0.3 + hue * 0.2, 0.8, 0.6); // Verde-azul
+                } else if(index === 1) {
+                    aurora.material.color.setHSL(0.6 + hue * 0.1, 0.9, 0.5); // Azul-violeta
+                } else {
+                    aurora.material.color.setHSL(0.8 + hue * 0.1, 0.7, 0.4); // Violeta-rosa
+                }
+            }
+        });
+        
+        // Cambiar luz ambiental de aurora
+        if(this.auroraAmbientLight) {
+            const intensity = 0.05 + Math.sin(time * 0.5) * 0.03;
+            this.auroraAmbientLight.intensity = intensity;
+            const hue = (time * 0.1) % 1;
+            this.auroraAmbientLight.color.setHSL(0.4 + hue * 0.3, 0.6, 0.5);
+        }
     }
 }
 
