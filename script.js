@@ -251,7 +251,7 @@ class ZombieApocalypseGame {
         // Sistema de terremoto
         this.earthquake = {
             isActive: false,
-            startTime: 30, // Empieza a los 30 segundos
+            startTime: 10, // Empieza a los 10 segundos
             duration: 60, // 60 segundos de terremoto
             intensity: 0,
             maxIntensity: 8,
@@ -2662,8 +2662,8 @@ class ZombieApocalypseGame {
                 const seconds = Math.floor(timeUntilEarthquake % 60);
                 countdownDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
                 
-                // Cambiar color a crítico cuando quedan menos de 10 segundos
-                if (timeUntilEarthquake <= 10) {
+                // Cambiar color a crítico cuando quedan menos de 5 segundos
+                if (timeUntilEarthquake <= 5) {
                     countdownDisplay.parentElement.classList.add('earthquake-countdown-critical');
                 } else {
                     countdownDisplay.parentElement.classList.remove('earthquake-countdown-critical');
@@ -2671,6 +2671,17 @@ class ZombieApocalypseGame {
             } else if (!this.earthquake.hasStarted){
                 countdownDisplay.textContent = "¡¡¡TERREMOTO!!!";
                 countdownDisplay.parentElement.classList.add('earthquake-countdown-critical');
+            } else if (this.earthquake.isActive) {
+                // Mostrar tiempo restante del terremoto
+                const earthquakeTime = currentTime - this.earthquake.startTime;
+                const timeLeft = this.earthquake.duration - earthquakeTime;
+                if (timeLeft > 0) {
+                    const minutes = Math.floor(timeLeft / 60);
+                    const seconds = Math.floor(timeLeft % 60);
+                    countdownDisplay.textContent = `SOBREVIVE: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                } else {
+                    countdownDisplay.textContent = "¡SOBREVIVISTE!";
+                }
             }
         }
 

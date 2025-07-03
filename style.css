@@ -136,19 +136,23 @@ body {
 .earthquake-timer {
     margin-top: 15px;
     padding-top: 15px;
-    border-top: 1px solid #ffaa00;
+    border-top: 2px solid #ffaa00;
+    background: rgba(255, 170, 0, 0.1);
+    border-radius: 5px;
+    padding: 10px;
 }
 
 .timer-display {
     margin-left: 10px;
     display: inline-block;
-    background: rgba(255, 170, 0, 0.2);
-    border: 2px solid #ffaa00;
-    border-radius: 5px;
-    padding: 8px 15px;
+    background: rgba(255, 170, 0, 0.4);
+    border: 3px solid #ffaa00;
+    border-radius: 8px;
+    padding: 12px 20px;
     font-family: 'Courier New', monospace;
-    font-size: 1.2rem;
+    font-size: 1.4rem;
     font-weight: bold;
+    box-shadow: 0 0 15px rgba(255, 170, 0, 0.5);
 }
 
 #earthquake-countdown {
@@ -160,8 +164,14 @@ body {
 .earthquake-countdown-critical {
     color: #ff0000 !important;
     border-color: #ff0000 !important;
-    background: rgba(255, 0, 0, 0.3) !important;
+    background: rgba(255, 0, 0, 0.4) !important;
     animation: countdown-critical 0.5s infinite !important;
+    box-shadow: 0 0 25px rgba(255, 0, 0, 0.8) !important;
+}
+
+.earthquake-countdown-critical #earthquake-countdown {
+    color: #ff0000 !important;
+    text-shadow: 0 0 15px #ff0000 !important;
 }
 
 @keyframes countdown-pulse {
